@@ -1,0 +1,1 @@
+pip install pydantic==2.10.6
