@@ -74,7 +74,7 @@ def put_along_last_axis(arr, indices, values):
 
 @dataclasses.dataclass(frozen=True)
 class Pi0FASTConfig(_model.BaseModelConfig):
-    dtype: str = "bfloat16"
+    dtype: str = "float32"
     paligemma_variant: _gemma.Variant = "gemma_2b"
 
     # Set the model specific defaults.

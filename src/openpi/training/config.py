@@ -358,7 +358,7 @@ class TrainConfig:
     # Random seed that will be used by random generators during training.
     seed: int = 42
     # Global batch size.
-    batch_size: int = 32
+    batch_size: int = 16
     # Number of workers to use for the data loader. Increasing this number will speed up data loading but
     # will increase memory and CPU usage.
     num_workers: int = 2
@@ -479,6 +479,110 @@ _CONFIGS = [
     # For your own dataset, you can copy this class and modify the dataset name, and data transforms based on
     # the comments below.
     TrainConfig(
+        name="pi0_libero_spatial_low_mem_finetune",
+        # Here is an example of loading a pi0 model for LoRA fine-tuning.
+        model=pi0.Pi0Config(paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
+        data=LeRobotLiberoDataConfig(
+            repo_id="msr915/libero_spatial_no_noops",
+            base_config=DataConfig(
+                local_files_only=True,  # Set to True for local-only datasets.
+                prompt_from_task=True,
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=30_000,
+        # The freeze filter defines which parameters should be frozen during training.
+        # We have a convenience function in the model config that returns the default freeze filter
+        # for the given model config for LoRA finetuning. Just make sure it matches the model config
+        # you chose above.
+        freeze_filter=pi0.Pi0Config(
+            paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
+        ).get_freeze_filter(),
+        # Turn off EMA for LoRA finetuning.
+        ema_decay=None,
+    ),
+    TrainConfig(
+        name="pi0_fast_libero_spatial_low_mem_finetune",
+        model=pi0_fast.Pi0FASTConfig(
+            action_dim=7, action_horizon=10, max_token_len=180, paligemma_variant="gemma_2b_lora"
+        ),
+        data=LeRobotLiberoDataConfig(
+            repo_id="msr915/libero_spatial_no_noops",
+            base_config=DataConfig(
+                local_files_only=True,  # Set to True for local-only datasets.
+                prompt_from_task=True,
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_fast_base/params"),
+        num_train_steps=30_000,
+        freeze_filter=pi0_fast.Pi0FASTConfig(
+            action_dim=7, action_horizon=10, max_token_len=180, paligemma_variant="gemma_2b_lora"
+        ).get_freeze_filter(),
+        # Turn off EMA for LoRA finetuning.
+        ema_decay=None,
+    ),
+    TrainConfig(
+        name="pi0_fast_libero_object_low_mem_finetune",
+        model=pi0_fast.Pi0FASTConfig(
+            action_dim=7, action_horizon=10, max_token_len=180, paligemma_variant="gemma_2b_lora"
+        ),
+        data=LeRobotLiberoDataConfig(
+            repo_id="msr915/libero_object_no_noops",
+            base_config=DataConfig(
+                local_files_only=True,  # Set to True for local-only datasets.
+                prompt_from_task=True,
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_fast_base/params"),
+        num_train_steps=30_000,
+        freeze_filter=pi0_fast.Pi0FASTConfig(
+            action_dim=7, action_horizon=10, max_token_len=180, paligemma_variant="gemma_2b_lora"
+        ).get_freeze_filter(),
+        # Turn off EMA for LoRA finetuning.
+        ema_decay=None,
+    ),
+    TrainConfig(
+        name="pi0_fast_libero_goal_low_mem_finetune",
+        model=pi0_fast.Pi0FASTConfig(
+            action_dim=7, action_horizon=10, max_token_len=180, paligemma_variant="gemma_2b_lora"
+        ),
+        data=LeRobotLiberoDataConfig(
+            repo_id="msr915/libero_goal_no_noops",
+            base_config=DataConfig(
+                local_files_only=True,  # Set to True for local-only datasets.
+                prompt_from_task=True,
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_fast_base/params"),
+        num_train_steps=30_000,
+        freeze_filter=pi0_fast.Pi0FASTConfig(
+            action_dim=7, action_horizon=10, max_token_len=180, paligemma_variant="gemma_2b_lora"
+        ).get_freeze_filter(),
+        # Turn off EMA for LoRA finetuning.
+        ema_decay=None,
+    ),
+    TrainConfig(
+        name="pi0_fast_libero_10_low_mem_finetune",
+        model=pi0_fast.Pi0FASTConfig(
+            action_dim=7, action_horizon=10, max_token_len=180, paligemma_variant="gemma_2b_lora"
+        ),
+        data=LeRobotLiberoDataConfig(
+            repo_id="msr915/libero_10_no_noops",
+            base_config=DataConfig(
+                local_files_only=True,  # Set to True for local-only datasets.
+                prompt_from_task=True,
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_fast_base/params"),
+        num_train_steps=30_000,
+        freeze_filter=pi0_fast.Pi0FASTConfig(
+            action_dim=7, action_horizon=10, max_token_len=180, paligemma_variant="gemma_2b_lora"
+        ).get_freeze_filter(),
+        # Turn off EMA for LoRA finetuning.
+        ema_decay=None,
+        batch_size=16,
+    ),
+    TrainConfig(
         # Change the name to reflect your model and dataset.
         name="pi0_libero",
         # Here you define the model config -- In this example we use pi0 as the model
@@ -576,6 +680,49 @@ _CONFIGS = [
         # Turn off EMA for LoRA finetuning.
         ema_decay=None,
     ),
+
+    # Training from scratch, no weight_loader
+    TrainConfig(
+        name="pi0_libero_all_no_pretrain",
+        # model=pi0_fast.Pi0FASTConfig(
+        #     action_dim=7, action_horizon=10, max_token_len=180, paligemma_variant="gemma_300m"
+        # ),
+        model=pi0.Pi0Config(paligemma_variant="gemma_300m_lora", action_expert_variant="gemma_300m_lora"),
+        data=LeRobotLiberoDataConfig(
+            repo_id="physical-intelligence/libero",
+            # repo_id="msr915/libero_all_no_noops",
+            base_config=DataConfig(
+                local_files_only=False,  # Set to True for local-only datasets.
+                prompt_from_task=True,
+            ),
+        ),
+        # freeze_filter=pi0.Pi0Config(
+        #     paligemma_variant="gemma_300m", action_expert_variant="gemma_300m_lora"
+        # ).get_freeze_filter(),
+        batch_size=1,
+        num_train_steps=160_000,
+        ema_decay=None
+    ),
+    TrainConfig(
+        name="pi0_fast_libero_all_no_pretrain",
+        model=pi0_fast.Pi0FASTConfig(
+            action_dim=7, action_horizon=10, max_token_len=48, paligemma_variant="gemma_2b"
+        ),
+        data=LeRobotLiberoDataConfig(
+            repo_id="msr915/libero_all_no_noops",
+            base_config=DataConfig(
+                local_files_only=True,  # Set to True for local-only datasets.
+                prompt_from_task=True,
+            ),
+        ),
+        # freeze_filter=pi0_fast.Pi0FASTConfig(
+        #     action_dim=7, action_horizon=10, max_token_len=180, paligemma_variant="gemma_2b"
+        # ).get_freeze_filter(),
+        batch_size=2,
+        num_train_steps=160_000,
+        ema_decay=None
+    ),
+
     #
     # Fine-tuning Aloha configs.
     #
