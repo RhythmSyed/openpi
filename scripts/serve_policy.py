@@ -18,7 +18,16 @@ class EnvMode(enum.Enum):
     ALOHA_SIM = "aloha_sim"
     DROID = "droid"
     LIBERO = "libero"
-
+    LIBERO_NO_PRETRAIN_100k = "libero_no_pretrain_100k"
+    LIBERO_SPATIAL_5k = "libero_spatial_5k"
+    LIBERO_SPATIAL_10k = "libero_spatial_10k"
+    LIBERO_SPATIAL_15k = "libero_spatial_15k"
+    LIBERO_SPATIAL_20k = "libero_spatial_20k"
+    LIBERO_SPATIAL_25k = "libero_spatial_25k"
+    LIBERO_SPATIAL_30k = "libero_spatial_30k"
+    LIBERO_OBJECT = "libero_object"
+    LIBERO_GOAL = "libero_goal"
+    LIBERO_LONG10 = "libero_long10"
 
 @dataclasses.dataclass
 class Checkpoint:
@@ -58,8 +67,8 @@ class Args:
 # Default checkpoints that should be used for each environment.
 DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
     EnvMode.ALOHA: Checkpoint(
-        config="pi0_aloha",
-        dir="s3://openpi-assets/checkpoints/pi0_base",
+        config="pi0_aloha_towel",
+        dir="s3://openpi-assets/checkpoints/pi0_aloha_towel",
     ),
     EnvMode.ALOHA_SIM: Checkpoint(
         config="pi0_aloha_sim",
@@ -72,6 +81,46 @@ DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
     EnvMode.LIBERO: Checkpoint(
         config="pi0_fast_libero",
         dir="s3://openpi-assets/checkpoints/pi0_fast_libero",
+    ),
+    EnvMode.LIBERO_NO_PRETRAIN_100k: Checkpoint(
+        config="pi0_libero_all_no_pretrain",
+        dir="/home/rhythm/Desktop/Research/openpi/checkpoints/pi0_libero_all_no_pretrain/pi0_libero_all_no_pretrain_experiment/100000",
+    ),
+    EnvMode.LIBERO_SPATIAL_5k: Checkpoint(
+        config="pi0_fast_libero_spatial_low_mem_finetune",
+        dir="/home/rhythmsyed/Desktop/openpi/checkpoints/pi0_fast_libero_spatial_low_mem_finetune/pi0_fast_libero_spatial_finetuned/5000",
+    ),
+    EnvMode.LIBERO_SPATIAL_10k: Checkpoint(
+        config="pi0_fast_libero_spatial_low_mem_finetune",
+        dir="/home/rhythmsyed/Desktop/openpi/checkpoints/pi0_fast_libero_spatial_low_mem_finetune/pi0_fast_libero_spatial_finetuned/10000",
+    ),
+    EnvMode.LIBERO_SPATIAL_15k: Checkpoint(
+        config="pi0_fast_libero_spatial_low_mem_finetune",
+        dir="/home/rhythmsyed/Desktop/openpi/checkpoints/pi0_fast_libero_spatial_low_mem_finetune/pi0_fast_libero_spatial_finetuned/15000",
+    ),
+    EnvMode.LIBERO_SPATIAL_20k: Checkpoint(
+        config="pi0_fast_libero_spatial_low_mem_finetune",
+        dir="/home/rhythmsyed/Desktop/openpi/checkpoints/pi0_fast_libero_spatial_low_mem_finetune/pi0_fast_libero_spatial_finetuned/20000",
+    ),
+    EnvMode.LIBERO_SPATIAL_25k: Checkpoint(
+        config="pi0_fast_libero_spatial_low_mem_finetune",
+        dir="/home/rhythmsyed/Desktop/openpi/checkpoints/pi0_fast_libero_spatial_low_mem_finetune/pi0_fast_libero_spatial_finetuned/25000",
+    ),
+    EnvMode.LIBERO_SPATIAL_30k: Checkpoint(
+        config="pi0_fast_libero_spatial_low_mem_finetune",
+        dir="/home/rhythmsyed/Desktop/openpi/checkpoints/pi0_fast_libero_spatial_low_mem_finetune/pi0_fast_libero_spatial_finetuned/30000",
+    ),
+    EnvMode.LIBERO_OBJECT: Checkpoint(
+        config="pi0_fast_libero_object_low_mem_finetune",
+        dir="/home/rhythmsyed/Desktop/openpi/checkpoints/pi0_fast_libero_object_low_mem_finetune/pi0_fast_libero_object_low_mem_finetune/2000",
+    ),
+    EnvMode.LIBERO_GOAL: Checkpoint(
+        config="pi0_fast_libero_goal_low_mem_finetune",
+        dir="/home/rhythmsyed/Desktop/openpi/checkpoints/pi0_fast_libero_goal_low_mem_finetune/pi0_fast_libero_goal_finetuned/7000",
+    ),
+    EnvMode.LIBERO_LONG10: Checkpoint(
+        config="pi0_fast_libero_10_low_mem_finetune",
+        dir="/home/rhythmsyed/Desktop/openpi/checkpoints/pi0_fast_libero_10_low_mem_finetune/pi0_fast_libero_10_finetuned/2000",
     ),
 }
 

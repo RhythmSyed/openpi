@@ -111,9 +111,26 @@ class Observation(Generic[ArrayT]):
         for key in data["image"]:
             if data["image"][key].dtype == np.uint8:
                 data["image"][key] = data["image"][key].astype(np.float32) / 255.0 * 2.0 - 1.0
+        
+        # Fix image masks shape and convert to JAX arrays
+        fixed_masks = {}
+        for key, mask in data["image_mask"].items():
+            # Fix shape if needed
+            if len(mask.shape) > 1:
+                # Extract just the batch dimension
+                mask_array = np.ones(mask.shape[0], dtype=bool)
+            else:
+                mask_array = mask
+            
+            # Convert numpy arrays to JAX arrays
+            if isinstance(mask_array, np.ndarray):
+                fixed_masks[key] = jnp.asarray(mask_array)
+            else:
+                fixed_masks[key] = mask_array
+                
         return cls(
             images=data["image"],
-            image_masks=data["image_mask"],
+            image_masks=fixed_masks,
             state=data["state"],
             tokenized_prompt=data.get("tokenized_prompt"),
             tokenized_prompt_mask=data.get("tokenized_prompt_mask"),

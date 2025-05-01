@@ -32,7 +32,7 @@ class Args:
     # LIBERO environment-specific parameters
     #################################################################################################################
     task_suite_name: str = (
-        "libero_spatial"  # Task suite. Options: libero_spatial, libero_object, libero_goal, libero_10, libero_90
+        "libero_object"  # Task suite. Options: libero_spatial, libero_object, libero_goal, libero_10, libero_90
     )
     num_steps_wait: int = 10  # Number of steps to wait for objects to stabilize i n sim
     num_trials_per_task: int = 50  # Number of rollouts per task
@@ -40,12 +40,38 @@ class Args:
     #################################################################################################################
     # Utils
     #################################################################################################################
-    video_out_path: str = "data/libero/videos"  # Path to save videos
+    video_out_path: str = f"data/{task_suite_name}/videos"  # Path to save videos
 
     seed: int = 7  # Random Seed (for reproducibility)
 
 
+def setup_logging(video_out_path: str) -> None:
+    """Setup logging to both console and file."""
+    # Create logs directory if it doesn't exist
+    log_dir = pathlib.Path(video_out_path).parent / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create a unique log file name using timestamp
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = log_dir / f"libero_eval_{timestamp}.log"
+    
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()  # This maintains console output
+        ]
+    )
+    logging.info(f"Logging to file: {log_file}")
+
+
 def eval_libero(args: Args) -> None:
+    # Setup logging
+    setup_logging(args.video_out_path)
+    
     # Set random seed
     np.random.seed(args.seed)
 
@@ -167,10 +193,12 @@ def eval_libero(args: Args) -> None:
             # Save a replay video of the episode
             suffix = "success" if done else "failure"
             task_segment = task_description.replace(" ", "_")
+            # Add task_id and episode_idx to make each video unique
+            video_name = f"rollout_task{task_id}_ep{episode_idx}_{task_segment}_{suffix}.mp4"
             imageio.mimwrite(
-                pathlib.Path(args.video_out_path) / f"rollout_{task_segment}_{suffix}.mp4",
+                pathlib.Path(args.video_out_path) / video_name,
                 [np.asarray(x) for x in replay_images],
-                fps=10,
+                fps=30,
             )
 
             # Log current results

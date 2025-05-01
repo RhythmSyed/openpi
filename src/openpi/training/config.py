@@ -12,6 +12,7 @@ import etils.epath as epath
 import flax.nnx as nnx
 from typing_extensions import override
 import tyro
+import numpy as np
 
 import openpi.models.model as _model
 import openpi.models.pi0 as pi0
@@ -321,6 +322,84 @@ class LeRobotLiberoDataConfig(DataConfigFactory):
             data_transforms=data_transforms,
             model_transforms=model_transforms,
         )
+    
+
+@dataclasses.dataclass(frozen=True)
+class ImageMaskTransform(_transforms.DataTransformFn):
+    """Creates image masks with correct shape for batch processing.
+    
+    This transform handles image masks that may have a time dimension [batch_size, time_steps],
+    reducing them to just [batch_size] by creating a new mask that marks all batch elements 
+    as valid (True).
+    """
+    def __call__(self, data: dict) -> dict:
+        # Create a 1D boolean mask (batch dimension only) for each image
+        # regardless of whether the image has a time dimension
+        if "image_mask" not in data:
+            data["image_mask"] = {}
+            
+        batch_size = next(iter(data["image"].values())).shape[0]
+        for k in data["image"]:
+            # Create a new mask with just the batch dimension
+            data["image_mask"][k] = np.ones(batch_size, dtype=bool)
+            
+        return data
+
+
+@dataclasses.dataclass(frozen=True)
+class LeRobotPushTDataConfig(DataConfigFactory):
+    """Configuration for the PushT dataset from LeRobot."""
+    
+    # If true, will convert joint dimensions to deltas with respect to the current state before passing to the model.
+    use_delta_joint_actions: bool = True
+    
+    # If provided, will be injected into the input data if the "prompt" key is not present.
+    default_prompt: str | None = None
+    
+    # Asset id for the dataset
+    asset_id: str | None = None
+    
+    # Repack transforms to match the dataset structure
+    repack_transforms: tyro.conf.Suppress[_transforms.Group] = dataclasses.field(
+        default=_transforms.Group(
+            inputs=[
+                _transforms.RepackTransform(
+                    {
+                        "image": "image",  # 96x96x3 video frames
+                        "state": "state",  # 5D state [block_x, block_y, block_angle, target_x, target_y]
+                        "actions": "actions",  # 2D motor actions [motor_0, motor_1]
+                    }
+                ),
+                # Use the proper class instead of lambda for pickling
+                ImageMaskTransform()
+            ]
+        )
+    )
+    
+    # Action keys that will be used to read the action sequence from the dataset
+    action_sequence_keys: Sequence[str] = ("actions",)
+    
+    @override
+    def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
+        base_config = self.create_base_config(assets_dirs)
+        
+        # Load norm stats from the correct path
+        norm_stats_path = assets_dirs / self.repo_id
+        if norm_stats_path.exists():
+            norm_stats = _normalize.load(str(norm_stats_path))
+            logging.info(f"Loaded norm stats from {norm_stats_path}")
+        else:
+            norm_stats = None
+            logging.info(f"Norm stats not found in {norm_stats_path}, skipping.")
+        
+        return dataclasses.replace(
+            base_config,
+            repo_id=self.repo_id,
+            asset_id=self.asset_id,
+            norm_stats=norm_stats,
+            repack_transforms=self.repack_transforms,
+            action_sequence_keys=self.action_sequence_keys,
+        )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -368,7 +447,7 @@ class TrainConfig:
     # How often (in steps) to log training metrics.
     log_interval: int = 100
     # How often (in steps) to save checkpoints.
-    save_interval: int = 1000
+    save_interval: int = 5000
     # If set, any existing checkpoints matching step % keep_period == 0 will not be deleted.
     keep_period: int | None = 5000
 
@@ -709,16 +788,16 @@ _CONFIGS = [
             action_dim=7, action_horizon=10, max_token_len=48, paligemma_variant="gemma_2b"
         ),
         data=LeRobotLiberoDataConfig(
-            repo_id="msr915/libero_all_no_noops",
+            repo_id="physical-intelligence/libero",
             base_config=DataConfig(
-                local_files_only=True,  # Set to True for local-only datasets.
+                local_files_only=False,  # Set to True for local-only datasets.
                 prompt_from_task=True,
             ),
         ),
         # freeze_filter=pi0_fast.Pi0FASTConfig(
         #     action_dim=7, action_horizon=10, max_token_len=180, paligemma_variant="gemma_2b"
         # ).get_freeze_filter(),
-        batch_size=2,
+        batch_size=1,
         num_train_steps=160_000,
         ema_decay=None
     ),
@@ -771,6 +850,33 @@ _CONFIGS = [
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_base/params"),
         num_train_steps=20_000,
+    ),
+    TrainConfig(
+        name="pusht_sim_img_state_action",
+        model=pi0.Pi0Config(
+            paligemma_variant="gemma_2b_lora",  # Use LoRA variant
+            action_expert_variant="gemma_300m_lora"  # Use LoRA variant
+        ),
+        data=LeRobotPushTDataConfig(
+            repo_id="msr915/pusht_sim_img_state_action",  # Updated to match our dataset name
+            base_config=DataConfig(
+                local_files_only=True,  # Set to True for local-only datasets.
+                prompt_from_task=False,
+            ),
+            default_prompt="Push the block to the target",
+            use_delta_joint_actions=False,  # Keep actions in absolute space
+            asset_id="pusht",  # Add asset_id for norm stats
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=30_000,
+        # Define freeze filter to exclude layers with mismatched dimensions
+        freeze_filter=pi0.Pi0Config(
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora"
+        ).get_freeze_filter(),
+        # Turn off EMA for LoRA finetuning
+        ema_decay=None,
+        batch_size=32,  # Increased batch size for better training
     ),
     #
     # Debugging configs.
